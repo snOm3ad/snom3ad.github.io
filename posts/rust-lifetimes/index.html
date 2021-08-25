@@ -1,0 +1,165 @@
+<!doctype html><html lang=en>
+<head>
+<meta charset=utf-8>
+<meta http-equiv=x-ua-compatible content="IE=edge">
+<meta name=viewport content="width=device-width,initial-scale=1">
+<meta name=author content="Oliver T. - https://afermentingprogrammer.github.io/">
+<title>Rust and Threads | A Fermenting Programmer</title>
+<meta name=description content>
+<meta name=twitter:card content="summary">
+<meta name=twitter:title content="Rust and Threads">
+<meta name=twitter:description content="The Problem At A Glance # I think a lot of people who try to learn Rust eventually run into a problem with lifetimes. Most of the time the compiler is pretty helpful in what it is you should change to make things work. Other times, it may be harder to pinpoint the error! For example, I think everyone who first started learning Rust has at some point forgotten the move keyword right before a closure.">
+<meta property="og:title" content="Rust and Threads">
+<meta property="og:description" content="The Problem At A Glance # I think a lot of people who try to learn Rust eventually run into a problem with lifetimes. Most of the time the compiler is pretty helpful in what it is you should change to make things work. Other times, it may be harder to pinpoint the error! For example, I think everyone who first started learning Rust has at some point forgotten the move keyword right before a closure.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://afermentingprogrammer.github.io/posts/rust-lifetimes/"><meta property="article:section" content="posts">
+<meta property="article:published_time" content="2021-08-20T00:00:00+00:00">
+<meta property="article:modified_time" content="2021-08-20T00:00:00+00:00">
+<meta itemprop=name content="Rust and Threads">
+<meta itemprop=description content="The Problem At A Glance # I think a lot of people who try to learn Rust eventually run into a problem with lifetimes. Most of the time the compiler is pretty helpful in what it is you should change to make things work. Other times, it may be harder to pinpoint the error! For example, I think everyone who first started learning Rust has at some point forgotten the move keyword right before a closure."><meta itemprop=datePublished content="2021-08-20T00:00:00+00:00">
+<meta itemprop=dateModified content="2021-08-20T00:00:00+00:00">
+<meta itemprop=wordCount content="867">
+<meta itemprop=keywords content="rust,lifetimes,static,threads,move,">
+<link rel=canonical href=https://afermentingprogrammer.github.io/posts/rust-lifetimes/>
+<link rel=dns-prefetch href=https://www.google-analytics.com>
+<link href=https://www.google-analytics.com rel=preconnect crossorigin>
+<link rel=alternate type=application/atom+xml title="A Fermenting Programmer" href=https://afermentingprogrammer.github.io/atom.xml>
+<link rel=alternate type=application/json title="A Fermenting Programmer" href=https://afermentingprogrammer.github.io/feed.json>
+<link rel="shortcut icon" type=image/jpg href=/logo-ci.jpg>
+<style>*,:after,:before{box-sizing:border-box;padding:0}body{font:1rem/1.5 '-apple-system',BlinkMacSystemFont,avenir next,avenir,helvetica,helvetica neue,ubuntu,roboto,noto,segoe ui,arial,sans-serif;text-rendering:optimizeSpeed;background-color:#0e1116}a,body{color:#e6e6e6}.posts hr{margin-top:0;margin-bottom:0;margin-right:.5rem;margin-left:.5rem;height:1px;border:none;border-bottom:1px #353535;flex:1 0 1rem}main{max-width:70ch;padding:2ch;margin:auto}::selection,a:focus,a:hover{background-color:rgba(120,136,150,.5);color:#e6e6e6}.meta{margin:0 0 2.5rem}.tags::before{content:"\2022";margin-left:1rem}code{font-family:San Francisco Mono,Monaco,consolas,lucida console,dejavu sans mono,bitstream vera sans mono,monospace;font-size:small;padding:.1rem;border:none;background-color:rgba(200,206,219,.15)}pre{padding:.5rem;overflow-x:auto;border:.5px solid #424345;border-radius:5px;background-color:#1c1c1c}pre code{border:none;background-color:transparent}img{max-width:100%}hr{background:#e6e6e6;height:1px;border:0}ul{list-style-type:square}ul,ol{padding-left:1.2rem}header li,footer li{display:inline;text-transform:uppercase}header a,footer a{text-decoration:none}header ul,footer ul{justify-content:space-between;display:flex}[aria-current=page]{font-weight:700;text-decoration:underline;text-decoration-thickness:1.5pt}header,section,footer{padding:1rem 0}blockquote{border-left:5px solid #e6e6e6;padding-left:1rem}.posts ul,header ul,footer ul{list-style:none}.posts,header ul,footer ul{padding:0}.posts li{align-items:center;display:flex;justify-content:space-between;margin-bottom:.7rem}.posts li a,.posts li div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-decoration:none}.posts li time{padding-left:1rem;white-space:nowrap;font-variant-numeric:tabular-nums}.hash{opacity:.25;text-decoration:none}.links{width:101px;display:flex;justify-content:space-between}table{border-collapse:collapse;text-align:left;width:100%}table tr{border-bottom:1px solid}table th,table td{padding:10px 20px}</style>
+<style>.chroma{color:#8a8a8a;background-color:#1c1c1c}.chroma .x{color:#d75f00}.chroma .err{}.chroma .lntd{vertical-align:top;padding:0;margin:0;border:0}.chroma .lntable{border-spacing:0;padding:0;margin:0;border:0;width:auto;overflow:auto;display:block}.chroma .hl{display:block;width:100%;background-color:#ffc}.chroma .lnt{margin-right:.4em;padding:0 .4em;color:#454545}.chroma .ln{margin-right:.4em;padding:0 .4em;color:#454545}.chroma .k{color:#5f8700}.chroma .kc{color:#d75f00}.chroma .kd{color:#0087ff}.chroma .kn{color:#d75f00}.chroma .kp{color:#5f8700}.chroma .kr{color:#0087ff}.chroma .kt{color:#af0000}.chroma .n{}.chroma .na{}.chroma .nb{color:#0087ff}.chroma .bp{color:#0087ff}.chroma .nc{color:#0087ff}.chroma .no{color:#d75f00}.chroma .nd{color:#0087ff}.chroma .ni{color:#d75f00}.chroma .ne{color:#af8700}.chroma .nf{color:#0087ff}.chroma .fm{}.chroma .nl{}.chroma .nn{}.chroma .nx{}.chroma .py{}.chroma .nt{color:#0087ff}.chroma .nv{color:#0087ff}.chroma .vc{}.chroma .vg{}.chroma .vi{}.chroma .vm{}.chroma .l{}.chroma .ld{}.chroma .s{color:#00afaf}.chroma .sa{color:#00afaf}.chroma .sb{color:#4e4e4e}.chroma .sc{color:#00afaf}.chroma .dl{color:#00afaf}.chroma .sd{color:#00afaf}.chroma .s2{color:#00afaf}.chroma .se{color:#af0000}.chroma .sh{color:#00afaf}.chroma .si{color:#00afaf}.chroma .sx{color:#00afaf}.chroma .sr{color:#af0000}.chroma .s1{color:#00afaf}.chroma .ss{color:#00afaf}.chroma .m{color:#00afaf}.chroma .mb{color:#00afaf}.chroma .mf{color:#00afaf}.chroma .mh{color:#00afaf}.chroma .mi{color:#00afaf}.chroma .il{color:#00afaf}.chroma .mo{color:#00afaf}.chroma .o{}.chroma .ow{color:#5f8700}.chroma .p{}.chroma .c{color:#4e4e4e}.chroma .ch{color:#4e4e4e}.chroma .cm{color:#4e4e4e}.chroma .c1{color:#4e4e4e}.chroma .cs{color:#5f8700}.chroma .cp{color:#5f8700}.chroma .cpf{color:#5f8700}.chroma .g{}.chroma .gd{color:#af0000}.chroma .ge{font-style:italic}.chroma .gr{color:#af0000;font-weight:700}.chroma .gh{color:#d75f00}.chroma .gi{color:#5f8700}.chroma .go{}.chroma .gp{}.chroma .gs{font-weight:700}.chroma .gu{color:#0087ff}.chroma .gt{}.chroma .gl{}.chroma .w{}</style>
+<script type=application/ld+json>{"@context":"http://schema.org","@type":"BlogPosting","articleSection":"posts","name":"Rust and Threads","headline":"Rust and Threads","alternativeHeadline":"","description":"The Problem At A Glance # I think a lot of people who try to learn Rust eventually run into a problem with lifetimes. Most of the time the compiler is pretty helpful in what it is you should change to make things work. Other times, it may be harder to pinpoint the error! For example, I think everyone who first started learning Rust has at some point forgotten the move keyword right before a closure.","inLanguage":"en-us","isFamilyFriendly":"true","mainEntityOfPage":{"@type":"WebPage","@id":"https:\/\/afermentingprogrammer.github.io\/posts\/rust-lifetimes\/"},"author":{"@type":"Person","name":"Oliver T."},"creator":{"@type":"Person","name":"Oliver T."},"accountablePerson":{"@type":"Person","name":"Oliver T."},"copyrightHolder":"A Fermenting Programmer","copyrightYear":"2021","dateCreated":"2021-08-20T00:00:00.00Z","datePublished":"2021-08-20T00:00:00.00Z","dateModified":"2021-08-20T00:00:00.00Z","publisher":{"@type":"Organization","name":"A Fermenting Programmer","url":"https://afermentingprogrammer.github.io/","logo":{"@type":"ImageObject","url":"https:\/\/afermentingprogrammer.github.io\/","width":"32","height":"32"}},"image":"https://afermentingprogrammer.github.io/","url":"https:\/\/afermentingprogrammer.github.io\/posts\/rust-lifetimes\/","wordCount":"867","genre":["rust","lifetimes","static","threads","move"],"keywords":["rust","lifetimes","static","threads","move"]}</script>
+</head>
+<body>
+<main>
+<header>
+<nav>
+<ul>
+<li>
+<a href=/>Index</a>
+</li>
+<li>
+<a href=/about/>About</a>
+</li>
+</ul>
+</nav>
+</header>
+<hr>
+<section>
+<h2 itemprop="name headline">Rust and Threads</h2>
+<p class=meta>
+<time itemprop=datePublished datetime=2021-08-20>
+August 20, 2021
+</time> &bull;
+<a href=/tags/rust>rust</a>, <a href=/tags/lifetimes>lifetimes</a>, <a href=/tags/static>static</a>, <a href=/tags/threads>threads</a>, <a href=/tags/move>move</a>
+</p>
+<span itemprop=articleBody>
+<h3 id=the-problem-at-a-glance>The Problem At A Glance <a href=#the-problem-at-a-glance class=hash>#</a></h3>
+<p>I think a lot of people who try to learn Rust eventually run into a problem with lifetimes. Most of the time the compiler is pretty helpful in what it is you should change to make things work. Other times, it may be harder to pinpoint the error! For example, I think everyone who first started learning Rust has at some point forgotten the <code>move</code> keyword right before a closure. It looks something like this:</p>
+<div class=highlight><pre tabindex=0 class=chroma><code class=language-rust data-lang=rust><span class=k>use</span><span class=w> </span><span class=n>std</span>::<span class=n>thread</span><span class=p>;</span><span class=w>
+</span><span class=w>
+</span><span class=w></span><span class=k>fn</span> <span class=nf>main</span><span class=p>()</span><span class=w> </span><span class=p>{</span><span class=w>
+</span><span class=w>    </span><span class=kd>let</span><span class=w> </span><span class=n>id</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=mi>1</span><span class=p>;</span><span class=w>
+</span><span class=w>    </span><span class=kd>let</span><span class=w> </span><span class=n>h</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>thread</span>::<span class=n>spawn</span><span class=p>(</span><span class=o>||</span><span class=w> </span><span class=p>{</span><span class=w>
+</span><span class=w>        </span><span class=n>println</span><span class=o>!</span><span class=p>(</span><span class=s>&#34;{}&#34;</span><span class=p>,</span><span class=w> </span><span class=n>id</span><span class=p>);</span><span class=w>
+</span><span class=w>    </span><span class=p>});</span><span class=w>
+</span><span class=w>    </span><span class=kd>let</span><span class=w> </span><span class=n>_</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>h</span><span class=p>.</span><span class=n>join</span><span class=p>();</span><span class=w>
+</span><span class=w>    </span><span class=n>println</span><span class=o>!</span><span class=p>(</span><span class=s>&#34;{}&#34;</span><span class=p>,</span><span class=w> </span><span class=n>id</span><span class=p>);</span><span class=w>
+</span><span class=w></span><span class=p>}</span><span class=w>
+</span></code></pre></div><p>If you try and compile this, you would get an error saying that the closure may outlive the function (<code>main</code>) which owns <code>id</code>. Which sounds pretty clear, but it does not explain where the problem stems from nor should it try to, error messages should be short and concise! However, we still need to fill this gap in our understanding, so let&rsquo;s dip our toes in the waters of lifetimes.</p>
+<h3 id=understanding-the-problem>Understanding The Problem <a href=#understanding-the-problem class=hash>#</a></h3>
+<p>In order to better understand what is going on, let us take a look at the function signature of <code>thread::spawn</code>:</p>
+<div class=highlight><pre tabindex=0 class=chroma><code class=language-rust data-lang=rust><span class=k>pub</span><span class=w> </span><span class=k>fn</span> <span class=nf>spawn</span><span class=o>&lt;</span><span class=n>F</span><span class=p>,</span><span class=w> </span><span class=n>T</span><span class=o>&gt;</span><span class=p>(</span><span class=n>f</span>: <span class=nc>F</span><span class=p>)</span><span class=w> </span>-&gt; <span class=nc>JoinHandle</span><span class=o>&lt;</span><span class=n>T</span><span class=o>&gt;</span><span class=w> 
+</span><span class=w></span><span class=k>where</span><span class=w>
+</span><span class=w>    </span><span class=n>F</span>: <span class=nb>FnOnce</span><span class=p>()</span><span class=w> </span>-&gt; <span class=nc>T</span><span class=p>,</span><span class=w>
+</span><span class=w>    </span><span class=n>F</span>: <span class=nb>Send</span> <span class=o>+</span><span class=w> </span><span class=nb>&#39;static</span><span class=p>,</span><span class=w>
+</span><span class=w>    </span><span class=n>T</span>: <span class=nb>Send</span> <span class=o>+</span><span class=w> </span><span class=nb>&#39;static</span><span class=p>,</span><span class=w>
+</span></code></pre></div><p>The first time I saw this, it looked extremely complicated but became fairly manageable once broken down.</p>
+<p>The most important part of the signature, for the purposes of understanding the problem, is <code>F: Send + 'static</code>, which is equivalent to saying <code>F: Send</code> and <code>F: 'static</code>.</p>
+<p>Let&rsquo;s focus on the latter, <code>F: 'static</code> means that the type <code>F</code> must be <em>bounded</em> by a <code>'static</code> lifetime <sup id=fnref:1><a href=#fn:1 class=footnote-ref role=doc-noteref>1</a></sup>.</p>
+<blockquote>
+<p>When a type <code>T</code> is bounded by a <code>'static</code> lifetime it means that you must be able to hold to that type for an indefinitely period of time, including up to the end of the program.</p>
+</blockquote>
+<p>The second key thing to understanding this problem is what restricts the lifetime of a closure. In Rust the lifetime of a closure is limited to the shortest lifetime of the borrows it makes from the context in which it is created.</p>
+<p>Since our closure borrows a variable (<code>id</code>) located inside the stack frame of <code>main</code> it follows that a reference to that variable cannot possibly live indefinitely long, because the whole thing gets dropped by the end of <code>main</code>. Thus violating the accord that we just saw, this is what the <code>note</code> part of the compiler error message tells us in a more concise way.</p>
+<pre><code>note: function requires argument type to outlive `'static`
+ --&gt; src/main.rs:5:13
+  |
+5 |       let h = thread::spawn(|| {
+  |  _____________^
+6 | |         println!(&quot;{:?}&quot;, id);
+7 | |     });
+  | |______^
+</code></pre><h3 id=solutions>Solutions <a href=#solutions class=hash>#</a></h3>
+<p>Now that we understand the problem, let&rsquo;s look at possible solutions. There are two ways to solve this problem:</p>
+<ul>
+<li>Add the <code>move</code> keyword right before the closure definition.</li>
+<li>Extend the lifetime of the borrow to <code>'static</code>.</li>
+</ul>
+<p>The compiler&rsquo;s <code>help</code> section seems to always suggests the first one, perhaps because it is often easier. It even goes as far as telling us why it would solve the problem, by forcing the closure to take ownership of the variable it will no longer need to borrow it.</p>
+<p>So the lifetime of the closure is no longer limited by the lifetime of its borrows (because there are none) meaning it can live for an indefinite period of time.</p>
+<pre><code>help: to force the closure to take ownership of `id` (and any other referenced variables), use the `move` keyword
+  |
+5 |     let h = thread::spawn(move || {
+  |                           ^^^^^^^
+</code></pre><p>You can also solve this problem by extending the lifetime of the borrow to <code>'static</code>. To do so, you would need to make sure the variable <code>id</code> does not get dropped as soon as <code>main</code> exits, in other words extend the lifetime of <code>id</code> beyond that of <code>main</code>. The easiest way to do this is to use the <code>const</code> keyword, if we change our code to:</p>
+<div class=highlight><pre tabindex=0 class=chroma><code class=language-rust data-lang=rust><span class=k>use</span><span class=w> </span><span class=n>std</span>::<span class=n>thread</span><span class=p>;</span><span class=w>
+</span><span class=w>
+</span><span class=w></span><span class=k>fn</span> <span class=nf>main</span><span class=p>()</span><span class=w> </span><span class=p>{</span><span class=w>
+</span><span class=w>    </span><span class=k>const</span><span class=w> </span><span class=n>ID</span>: <span class=kt>u8</span> <span class=o>=</span><span class=w> </span><span class=mi>0</span><span class=p>;</span><span class=w>
+</span><span class=w>    </span><span class=kd>let</span><span class=w> </span><span class=n>h</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>thread</span>::<span class=n>spawn</span><span class=p>(</span><span class=o>||</span><span class=w> </span><span class=p>{</span><span class=w>
+</span><span class=w>        </span><span class=n>println</span><span class=o>!</span><span class=p>(</span><span class=s>&#34;{}&#34;</span><span class=p>,</span><span class=w> </span><span class=n>ID</span><span class=p>);</span><span class=w>
+</span><span class=w>    </span><span class=p>});</span><span class=w>
+</span><span class=w>    </span><span class=kd>let</span><span class=w> </span><span class=n>_</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>h</span><span class=p>.</span><span class=n>join</span><span class=p>();</span><span class=w>
+</span><span class=w>    </span><span class=n>println</span><span class=o>!</span><span class=p>(</span><span class=s>&#34;{}&#34;</span><span class=p>,</span><span class=w> </span><span class=n>ID</span><span class=p>);</span><span class=w>
+</span><span class=w></span><span class=p>}</span><span class=w>
+</span></code></pre></div><h3 id=caveats>Caveats <a href=#caveats class=hash>#</a></h3>
+<p>A common problem when using the first solution is that when the type is not <code>Copy</code> it cannot be used again in the context in which it was created. Take the following example,</p>
+<div class=highlight><pre tabindex=0 class=chroma><code class=language-rust data-lang=rust><span class=k>use</span><span class=w> </span><span class=n>std</span>::<span class=n>thread</span><span class=p>;</span><span class=w>
+</span><span class=w>
+</span><span class=w></span><span class=k>fn</span> <span class=nf>main</span><span class=p>()</span><span class=w> </span><span class=p>{</span><span class=w>
+</span><span class=w>    </span><span class=kd>let</span><span class=w> </span><span class=n>id</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>vec</span><span class=o>!</span><span class=p>[</span><span class=mi>1</span><span class=p>];</span><span class=w>
+</span><span class=w>    </span><span class=kd>let</span><span class=w> </span><span class=n>h</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>thread</span>::<span class=n>spawn</span><span class=p>(</span><span class=k>move</span><span class=w> </span><span class=o>||</span><span class=w> </span><span class=p>{</span><span class=w>
+</span><span class=w>        </span><span class=n>println</span><span class=o>!</span><span class=p>(</span><span class=s>&#34;{}&#34;</span><span class=p>,</span><span class=w> </span><span class=n>id</span><span class=p>);</span><span class=w>
+</span><span class=w>    </span><span class=p>});</span><span class=w>
+</span><span class=w>    </span><span class=kd>let</span><span class=w> </span><span class=n>_</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>h</span><span class=p>.</span><span class=n>join</span><span class=p>();</span><span class=w>
+</span><span class=w>    </span><span class=n>println</span><span class=o>!</span><span class=p>(</span><span class=s>&#34;{}&#34;</span><span class=p>,</span><span class=w> </span><span class=n>id</span><span class=p>);</span><span class=w>
+</span><span class=w></span><span class=p>}</span><span class=w>
+</span></code></pre></div><p>Here we get an error saying that we are attempting to borrow a value that has been moved. This is because, as the compiler stated earlier, the <code>move</code> keyword forces the closure to take ownership of all its borrows.</p>
+<pre><code>error[E0382]: borrow of moved value: `id`
+</code></pre><p>The common and most preferred way to fix for this problem is to clone the variable and pass the copy to the closure. While this works for almost any case I can think of, there are times where it is undesirable to copy the data.</p>
+<p>For those cases, most heap allocated standard library types provide a method called <code>leak</code>, which allows you to get a reference to their inner data. Note that this means you are responsible for freeing the memory that was allocated, if you don&rsquo;t then your program will leak memory. While this is mostly undesirable behavior, there are cases where it becomes necessary such as FFI. It is possible to extend the lifetime of heap allocated data to that of <code>'static</code> by simply reassigning, like this:</p>
+<div class=highlight><pre tabindex=0 class=chroma><code class=language-rust data-lang=rust><span class=k>use</span><span class=w> </span><span class=n>std</span>::<span class=n>thread</span><span class=p>;</span><span class=w>
+</span><span class=w>
+</span><span class=w></span><span class=k>fn</span> <span class=nf>main</span><span class=p>()</span><span class=w> </span><span class=p>{</span><span class=w>
+</span><span class=w>    </span><span class=kd>let</span><span class=w> </span><span class=n>id</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>vec</span><span class=o>!</span><span class=p>[</span><span class=mi>1</span><span class=p>];</span><span class=w>
+</span><span class=w>    </span><span class=kd>let</span><span class=w> </span><span class=n>id</span>: <span class=kp>&amp;</span><span class=nb>&#39;static</span><span class=w> </span><span class=p>[</span><span class=kt>i32</span><span class=p>]</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>id</span><span class=p>.</span><span class=n>leak</span><span class=p>();</span><span class=w>
+</span><span class=w>    </span><span class=kd>let</span><span class=w> </span><span class=n>h</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>thread</span>::<span class=n>spawn</span><span class=p>(</span><span class=k>move</span><span class=w> </span><span class=o>||</span><span class=w> </span><span class=p>{</span><span class=w>
+</span><span class=w>        </span><span class=n>println</span><span class=o>!</span><span class=p>(</span><span class=s>&#34;{}&#34;</span><span class=p>,</span><span class=w> </span><span class=n>id</span><span class=p>);</span><span class=w>
+</span><span class=w>    </span><span class=p>});</span><span class=w>
+</span><span class=w>    </span><span class=kd>let</span><span class=w> </span><span class=n>_</span><span class=w> </span><span class=o>=</span><span class=w> </span><span class=n>h</span><span class=p>.</span><span class=n>join</span><span class=p>();</span><span class=w>
+</span><span class=w>    </span><span class=n>println</span><span class=o>!</span><span class=p>(</span><span class=s>&#34;{}&#34;</span><span class=p>,</span><span class=w> </span><span class=n>id</span><span class=p>);</span><span class=w>
+</span><span class=w></span><span class=p>}</span><span class=w>
+</span></code></pre></div><section class=footnotes role=doc-endnotes>
+<hr>
+<ol>
+<li id=fn:1 role=doc-endnote>
+<p>There is a distinction between <code>T: &lt;trait></code> and <code>T: &lt;lifetime></code>, see <a href=https://github.com/pretzelhammer/rust-blog/blob/master/posts/common-rust-lifetime-misconceptions.md>here for more</a>.&#160;<a href=#fnref:1 class=footnote-backref role=doc-backlink>&#8617;&#xfe0e;</a></p>
+</li>
+</ol>
+</section>
+</span>
+</section>
+<hr>
+<footer>
+<nav>
+<ul>
+<li>
+© 2021
+</li>
+</ul>
+</nav>
+</footer>
+</main>
+</body>
+</html>
